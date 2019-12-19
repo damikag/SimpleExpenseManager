@@ -90,7 +90,46 @@ public class InDBTransactionDAO implements TransactionDAO {
 
     @Override
     public List<Transaction> getPaginatedTransactionLogs(int limit) {
-        return getAllTransactionLogs();
-//        return null;
+
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        String sortOrder = DbHelper.LogTBL.COLUMN_NAME_DATE + " DESC";
+        Cursor cursor = db.query(
+                DbHelper.LogTBL.TABLE_NAME,   // The table to query
+                null,             // The array of columns to return (pass null to get all)
+                null,              // The columns for the WHERE clause
+                null,          // The values for the WHERE clause
+                null,                   // don't group the rows
+                null,                   // don't filter by row groups
+                sortOrder,              // The sort order
+                String.valueOf(limit)
+        );
+
+        List transactionList = new ArrayList<>();
+        while(cursor.moveToNext()) {
+
+
+            Date dateobj = new Date();
+            try{
+                dateobj = format.parse(cursor.getString(cursor.getColumnIndexOrThrow(DbHelper.LogTBL.COLUMN_NAME_DATE)));
+            }
+            catch (ParseException ignored){}
+
+            ExpenseType exType=null;
+
+            if(cursor.getString(cursor.getColumnIndexOrThrow(DbHelper.LogTBL.COLUMN_NAME_TYPE)).equals("EXPENSE") )
+                exType=ExpenseType.EXPENSE;
+            else
+                exType=ExpenseType.INCOME;
+
+            Transaction transaction = new Transaction(dateobj,
+                    cursor.getString(cursor.getColumnIndexOrThrow(DbHelper.LogTBL.COLUMN_NAME_ACC_NO)),
+                    exType,
+                    cursor.getDouble(cursor.getColumnIndexOrThrow(DbHelper.LogTBL.COLUMN_NAME_AMOUNT)));
+
+            transactionList.add(transaction);
+        }
+        cursor.close();
+
+        return transactionList;
     }
 }
